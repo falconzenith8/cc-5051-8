@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>维修跨越导航演示 · 七号维修舱段</title>
+<style>
+  :root { --bg:#0b1020; --panel:#131a2e; --line:#26314f; --txt:#c9d4ea; --dim:#7b87a5;
+          --ok:#4ade80; --bad:#f87171; --act:#ffd166; --info:#4cc9f0; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:13px/1.5 "SF Mono",Consolas,"Courier New",monospace; }
+  header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; color:#eaf0ff; }
+  header .hint { color:var(--dim); font-size:12px; }
+  header code { color:var(--info); }
+  main { display:flex; gap:12px; padding:12px 16px; align-items:flex-start; flex-wrap:wrap; }
+  .stage { flex:0 0 auto; }
+  canvas { background:#0e1528; border:1px solid var(--line); border-radius:6px; display:block; }
+  #statusLine { margin-top:6px; padding:6px 10px; background:var(--panel); border:1px solid var(--line); border-radius:6px; min-height:32px; }
+  aside { flex:1 1 380px; min-width:360px; display:flex; flex-direction:column; gap:10px; }
+  section.panel { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:8px 10px; }
+  section.panel h2 { font-size:12px; margin:0 0 6px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
+  label { display:inline-flex; align-items:center; gap:6px; margin:2px 8px 2px 0; }
+  select, button { background:#0e1528; color:var(--txt); border:1px solid var(--line); border-radius:4px; padding:3px 8px; font:inherit; }
+  button { cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--info); color:#fff; }
+  button:disabled { opacity:.4; cursor:default; }
+  input[type=range] { vertical-align:middle; }
+  .btns { margin:6px 0 2px; display:flex; gap:6px; flex-wrap:wrap; }
+  .hint { color:var(--dim); font-size:11px; margin-top:4px; }
+  .params { color:var(--dim); font-size:12px; margin-top:2px; }
+  .conn-row { padding:2px 6px; border-radius:4px; cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
+  .conn-row:hover { background:#1a2440; }
+  .conn-row.focus { outline:1px solid var(--info); }
+  .conn-row.active { outline:1px solid var(--act); }
+  .conn-row .st-ok { color:var(--ok); }
+  .conn-row .st-no { color:var(--bad); }
+  .check { display:flex; gap:6px; }
+  .check .p { color:var(--ok); }
+  .check .f { color:var(--bad); }
+  .step { padding:1px 6px; border-radius:4px; }
+  .step.cur { background:#2a3454; color:#fff; }
+  .step.done { color:var(--dim); text-decoration:line-through; }
+  #logBox { max-height:180px; overflow-y:auto; border-top:1px solid var(--line); margin-top:6px; padding-top:4px; }
+  .log-line { white-space:pre-wrap; }
+  .log-line.bad { color:var(--bad); }
+  .log-line.good { color:var(--ok); }
+  .log-line.info { color:var(--info); }
+  .banner { padding:4px 8px; border-radius:4px; margin-bottom:6px; display:inline-block; }
+  .banner.ok { background:#14321f; color:var(--ok); }
+  .banner.bad { background:#3a1620; color:var(--bad); }
+  .banner.run { background:#2a2c14; color:var(--act); }
+</style>
+</head>
+<body>
+<header>
+  <h1>科幻设施维修机器人 · 跨越导航演示</h1>
+  <div class="hint">启动方式：在本目录运行 <code>python3 -m http.server 8000</code>，浏览器打开 <code>http://localhost:8000</code>（ES 模块需经 HTTP 加载，直接双击 html 无效）。无头验证：<code>node test/headless.mjs</code></div>
+</header>
+<main>
+  <div class="stage">
+    <canvas id="view" width="1010" height="560"></canvas>
+    <div id="statusLine">就绪</div>
+  </div>
+  <aside>
+    <section class="panel">
+      <h2>机器人（能力可切换，求路与执行实时采用）</h2>
+      <label>型号 <select id="modelSel"></select></label>
+      <div>
+        <label><input type="checkbox" id="capClimb"> 攀梯</label>
+        <label><input type="checkbox" id="capCrawl"> 钻管</label>
+        <label><input type="checkbox" id="capTraction"> 牵引</label>
+      </div>
+      <div class="params" id="robotParams"></div>
+    </section>
+    <section class="panel">
+      <h2>任务（选择跨点）</h2>
+      <label>起点 <select id="startSel"></select></label>
+      <label>终点 <select id="goalSel"></select></label>
+      <label>必经跨点 <select id="viaSel"></select></label>
+      <div class="btns">
+        <button id="planBtn">规划路线</button>
+        <button id="execBtn">执行</button>
+        <button id="pauseBtn">暂停</button>
+        <button id="resetBtn">重置</button>
+      </div>
+      <label>速度 <input id="speedRange" type="range" min="0.25" max="4" step="0.25" value="1"> <span id="speedVal">1×</span></label>
+      <div class="hint">画布操作：单击平台设终点，Shift+单击设起点；点击下方连接行查看其进入依据。执行中切换能力可观察“中止→退回→反馈内核→重规划”。</div>
+    </section>
+    <section class="panel">
+      <h2>连接一览（由内核按当前参数判定）</h2>
+      <div id="connList"></div>
+    </section>
+    <section class="panel">
+      <h2>正在执行的连接 · 允许进入的依据</h2>
+      <div id="basisBox">—</div>
+    </section>
+    <section class="panel">
+      <h2>结果区（计划与动作状态）</h2>
+      <div id="planBox">尚未规划</div>
+      <div id="logBox"></div>
+    </section>
+  </aside>
+</main>
+<script type="module" src="src/ui.js"></script>
+</body>
+</html>
