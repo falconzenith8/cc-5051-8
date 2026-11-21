@@ -50,6 +50,12 @@
   .banner.ok { background:#14321f; color:var(--ok); }
   .banner.bad { background:#3a1620; color:var(--bad); }
   .banner.run { background:#2a2c14; color:var(--act); }
+  .rp-readout { padding:6px 8px; background:#0e1528; border:1px solid var(--line); border-radius:4px; margin:6px 0; line-height:1.7; }
+  .rp-readout .k { color:var(--dim); }
+  .rp-readout .bad { color:var(--bad); } .rp-readout .ok { color:var(--ok); } .rp-readout .warn { color:var(--act); }
+  #rpLedger { max-height:170px; overflow-y:auto; font-size:11px; border-top:1px solid var(--line); padding-top:4px; }
+  .rp-e { padding:1px 4px; border-radius:3px; white-space:pre-wrap; }
+  .rp-e.bad { color:var(--bad); } .rp-e.good { color:var(--ok); } .rp-e.info { color:var(--info); } .rp-e.dim { color:var(--dim); }
 </style>
 </head>
 <body>
@@ -100,8 +106,26 @@
       <div id="planBox">尚未规划</div>
       <div id="logBox"></div>
     </section>
+    <section class="panel" id="replayPanel">
+      <h2>游戏回放：晚到动画回调复现/修复（L2 攀梯 → T2 牵引，同片段不同实例）</h2>
+      <div class="btns">
+        <label>轨迹 <select id="rpScript"></select></label>
+        <label>提交策略 <select id="rpPolicy"></select></label>
+        <label>同刻回调顺序 <select id="rpTie"></select></label>
+        <label>旧回调时机 <select id="rpOrder"></select></label>
+      </div>
+      <div class="btns">
+        <button id="rpRun">从头重播</button>
+        <button id="rpPause">暂停</button>
+        <label>变速 <input id="rpSpeed" type="range" min="0.25" max="4" step="0.25" value="1"> <span id="rpSpeedVal">1×</span></label>
+      </div>
+      <canvas id="rpCanvas" width="360" height="220"></canvas>
+      <div id="rpReadout" class="rp-readout">—</div>
+      <div id="rpLedger"></div>
+    </section>
   </aside>
 </main>
 <script type="module" src="src/ui.js"></script>
+<script type="module" src="src/replay-ui.js"></script>
 </body>
 </html>
